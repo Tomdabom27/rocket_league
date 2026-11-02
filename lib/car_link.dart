@@ -64,9 +64,12 @@ class CarLink extends ChangeNotifier {
   bool get isConnected => _connected;
 
   StreamSubscription<dynamic>? _scanSub;
-  Future<void> stopScanning() async {}
 
-  // ---- loading paired + nearby devices --------------------------------
+  Future<void> stopScanning() async {
+    try {
+      await FlutterBluetoothSerial.cancelDiscovery();
+    } catch (_) {}
+  }
 
   // ---- loading paired + nearby devices --------------------------------
 
@@ -80,6 +83,8 @@ class CarLink extends ChangeNotifier {
 
     try {
       await FlutterBluetoothSerial.ensurePermissions();
+      await stopScanning();
+
       final paired = await FlutterBluetoothSerial.getPairedDevices();
       final pairedByAddress = <String, String>{
         for (final d in paired)
@@ -113,12 +118,19 @@ class CarLink extends ChangeNotifier {
   /// Returns null on success, otherwise a short message to show the user.
   Future<String?> connect(FoundDevice found) async {
     _connectingAddress = found.address;
+    _connected = false;
     notifyListeners();
+
     try {
+      await stopScanning();
+      try {
+        await FlutterBluetoothSerial.disconnect();
+      } catch (_) {}
+
       final ok = await FlutterBluetoothSerial.connect(
         found.address,
         uuid: _sppUuid,
-        timeoutMs: 5000,
+        timeoutMs: 15000,
       );
       _connected = ok;
       return ok ? null : 'COULDN’T CONNECT';
