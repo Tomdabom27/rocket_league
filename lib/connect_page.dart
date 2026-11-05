@@ -130,8 +130,6 @@ class _DeviceBox extends StatelessWidget {
 
     modules.forEach(addRow);
 
-    // The division line only exists when there is a recognised module above it
-    // (and something below it to divide from).
     if (modules.isNotEmpty && others.isNotEmpty) {
       children
         ..add(SizedBox(height: 20 * s))
@@ -146,7 +144,6 @@ class _DeviceBox extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 574 * s + 48 * s),
         child: ListView(
-          // Rows scroll inside the navy box and are simply cut off by it.
           padding: EdgeInsets.fromLTRB(24 * s, 32 * s, 24 * s, 24 * s),
           children: children,
         ),

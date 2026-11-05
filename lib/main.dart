@@ -24,10 +24,6 @@ class RocketLeagueApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.navy),
       ),
-      // Both screens are landscape-only designs. Rather than locking the
-      // orientation, cover everything with a prompt while the phone is in
-      // portrait. The navigator stays mounted underneath, so the connection
-      // and the current screen survive a rotation.
       builder: (context, child) {
         final portrait =
             MediaQuery.orientationOf(context) == Orientation.portrait;

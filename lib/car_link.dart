@@ -4,12 +4,15 @@ import 'package:bluetooth_serial_android/bluetooth_serial_android.dart';
 import 'package:flutter/foundation.dart';
 
 class CarProtocol {
-  /// [left] / [right] are motor values in -255..255.
-  /// Trailing "B:1"/"B:0" marks whether boost is active — your current
-  /// sketch ignores it (toInt() stops at the first non-digit character),
-  /// so this is safe to add before any LED code exists.
-  static String drive(int left, int right, bool boosting) =>
-      'L: $left,R: $right B:${boosting ? 1 : 0}\n';
+  static String drive(int left, int right, bool boosting) {
+    int boostValue;
+    if (boosting) {
+      boostValue = 1;
+    } else {
+      boostValue = 0;
+    }
+    return 'L:$left,R:$right,B:$boostValue\n';
+  }
 }
 
 class FoundDevice {
@@ -20,8 +23,6 @@ class FoundDevice {
 
   String get id => address;
 
-  /// True when the paired device's name looks like a Bluetooth module
-  /// rather than a phone, headphones, etc.
   bool get isModule {
     final n = name.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
     const hints = [
@@ -39,14 +40,11 @@ class FoundDevice {
   }
 }
 
-/// Single shared connection to the car. Screens listen to it.
 class CarLink extends ChangeNotifier {
   CarLink._();
   static final CarLink instance = CarLink._();
 
   static const _sppUuid = '00001101-0000-1000-8000-00805F9B34FB';
-
-  // ---- state ---------------------------------------------------------------
 
   List<FoundDevice> _devices = const [];
   List<FoundDevice> get devices => _devices;
@@ -63,19 +61,8 @@ class CarLink extends ChangeNotifier {
   bool _connected = false;
   bool get isConnected => _connected;
 
-  StreamSubscription<dynamic>? _scanSub;
+  Future<void> stopScanning() async {}
 
-  Future<void> stopScanning() async {
-    try {
-      await FlutterBluetoothSerial.cancelDiscovery();
-    } catch (_) {}
-  }
-
-  // ---- loading paired + nearby devices --------------------------------
-
-  /// Lists paired devices that are also currently in range (i.e. turned on
-  /// and discoverable nearby), the same set Android's own Bluetooth
-  /// settings screen marks as "available".
   Future<void> loadDevices() async {
     _loading = true;
     _loadError = null;
@@ -83,8 +70,6 @@ class CarLink extends ChangeNotifier {
 
     try {
       await FlutterBluetoothSerial.ensurePermissions();
-      await stopScanning();
-
       final paired = await FlutterBluetoothSerial.getPairedDevices();
       final pairedByAddress = <String, String>{
         for (final d in paired)
@@ -113,29 +98,26 @@ class CarLink extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---- connecting ------------------------------------------------------
-
-  /// Returns null on success, otherwise a short message to show the user.
   Future<String?> connect(FoundDevice found) async {
     _connectingAddress = found.address;
-    _connected = false;
     notifyListeners();
-
     try {
-      await stopScanning();
-      try {
-        await FlutterBluetoothSerial.disconnect();
-      } catch (_) {}
-
       final ok = await FlutterBluetoothSerial.connect(
         found.address,
         uuid: _sppUuid,
-        timeoutMs: 15000,
+        timeoutMs: 5000,
       );
       _connected = ok;
+      if (ok) {
+        _lastL = 0;
+        _lastR = 0;
+        _startKeepAlive();
+        _write(CarProtocol.drive(0, 0, false));
+      }
       return ok ? null : 'COULDN’T CONNECT';
     } catch (_) {
       _connected = false;
+      _stopKeepAlive();
       return 'COULDN’T CONNECT';
     } finally {
       _connectingAddress = null;
@@ -143,8 +125,11 @@ class CarLink extends ChangeNotifier {
     }
   }
 
-  /// Drops the connection (the "unpair" of the BACK button).
   Future<void> disconnect() async {
+    _stopKeepAlive();
+    try {
+      await FlutterBluetoothSerial.write(CarProtocol.drive(0, 0, false));
+    } catch (_) {}
     try {
       await FlutterBluetoothSerial.disconnect();
     } catch (_) {}
@@ -152,9 +137,21 @@ class CarLink extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---- sending -----------------------------------------------------------
+  Timer? _keepAlive;
 
-  /// Motor limit while not boosting / while boosting (max 255).
+  void _startKeepAlive() {
+    _keepAlive?.cancel();
+    _keepAlive = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (!_connected) return;
+      _write(CarProtocol.drive(_lastL, _lastR, _boosting));
+    });
+  }
+
+  void _stopKeepAlive() {
+    _keepAlive?.cancel();
+    _keepAlive = null;
+  }
+
   static const normalMax = 150;
   static const boostMax = 255;
 
@@ -165,15 +162,12 @@ class CarLink extends ChangeNotifier {
   int _lastR = 0;
   DateTime _lastDriveAt = DateTime.fromMillisecondsSinceEpoch(0);
 
-  /// [x] and [y] are -1..1, y positive = forward.
   void sendDrive(double x, double y) {
     _x = x;
     _y = y;
     _sendMixed();
   }
 
-  /// Lifts / restores the speed cap and re-sends the current stick position
-  /// immediately.
   void setBoosting(bool on) {
     _boosting = on;
     _sendMixed(force: true);
@@ -191,6 +185,10 @@ class CarLink extends ChangeNotifier {
     final ir = (r / m * limit).round();
 
     if (!force && il == _lastL && ir == _lastR) return;
+
+    _lastL = il;
+    _lastR = ir;
+
     final stop = il == 0 && ir == 0;
     final now = DateTime.now();
     if (!force &&
@@ -198,18 +196,17 @@ class CarLink extends ChangeNotifier {
         now.difference(_lastDriveAt) < const Duration(milliseconds: 50)) {
       return;
     }
-    _lastL = il;
-    _lastR = ir;
     _lastDriveAt = now;
     _write(CarProtocol.drive(il, ir, _boosting));
   }
 
   Future<void> _write(String message) async {
-    if (!_connected) return; // skipped / not connected: silently do nothing
+    if (!_connected) return;
     try {
       await FlutterBluetoothSerial.write(message);
     } catch (_) {
       _connected = false;
+      _stopKeepAlive();
       notifyListeners();
     }
   }

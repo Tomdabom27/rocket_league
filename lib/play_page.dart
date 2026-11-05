@@ -8,18 +8,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'car_link.dart';
 import 'ui_kit.dart';
 
-/// Boost tuning. Adjust freely.
-const _boostDrainSeconds = 3.0; // full -> empty while held
-const _boostFillSeconds = 10.0; // empty -> full
+const _boostDrainSeconds = 3.0;
+const _boostFillSeconds = 10.0;
 
-/// Score is display-only for now (goal detection hardware isn't built yet).
 const _redScore = 0;
 const _blueScore = 0;
 
 class PlayPage extends StatefulWidget {
   const PlayPage({super.key, required this.skipped});
 
-  /// True when opened with SKIP: UI only, nothing is sent anywhere.
   final bool skipped;
 
   @override
@@ -34,9 +31,9 @@ class _PlayPageState extends State<PlayPage>
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
 
-  bool _held = false; // finger is down on the boost button
-  bool _boosting = false; // currently draining / applying boost
-  bool _lockedOut = false; // hit zero while held — needs a release first
+  bool _held = false;
+  bool _boosting = false;
+  bool _lockedOut = false;
   bool _leaving = false;
 
   @override
@@ -66,7 +63,7 @@ class _PlayPageState extends State<PlayPage>
       if (level <= 0) {
         level = 0;
         boostingNow = false;
-        _lockedOut = true; // must release + re-press even if still held
+        _lockedOut = true;
       }
     } else if (level < 1) {
       level = math.min(1.0, level + dt / _boostFillSeconds);
@@ -97,7 +94,6 @@ class _PlayPageState extends State<PlayPage>
 
   void _onLinkChanged() {
     if (_leaving || link.isConnected) return;
-    // Connection dropped on its own.
     _leaving = true;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -153,15 +149,12 @@ class _PlayPageState extends State<PlayPage>
             final h = c.maxHeight;
             return Stack(
               children: [
-                // Joystick, centred at ~20% of the box width.
                 Positioned(
                   left: w * 0.198 - 105 * s,
                   top: (h - 210 * s) / 2,
                   child: _Joystick(s: s, onChanged: link.sendDrive),
                 ),
-                // Score.
                 Center(child: _Score(s: s)),
-                // Boost, centred at ~81% of the box width.
                 Positioned(
                   left: w * 0.81 - 58.5 * s,
                   top: (h - 117 * s) / 2,
@@ -201,16 +194,11 @@ class _Score extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Joystick
-// ---------------------------------------------------------------------------
-
 class _Joystick extends StatefulWidget {
   const _Joystick({required this.s, required this.onChanged});
 
   final double s;
 
-  /// x, y in -1..1 with y positive = up/forward. Fires (0, 0) on release.
   final void Function(double x, double y) onChanged;
 
   @override
@@ -283,10 +271,6 @@ class _JoystickState extends State<_Joystick> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Boost button
-// ---------------------------------------------------------------------------
-
 class _BoostButton extends StatefulWidget {
   const _BoostButton({
     required this.s,
@@ -345,8 +329,6 @@ class _BoostButtonState extends State<_BoostButton> {
   }
 }
 
-/// Filled disc + a 7px ring. The bright arc is the boost left, starting at
-/// 12 o'clock and running clockwise, so it visibly shrinks while boosting.
 class _BoostRingPainter extends CustomPainter {
   _BoostRingPainter(this.level, this.s) : super(repaint: level);
 

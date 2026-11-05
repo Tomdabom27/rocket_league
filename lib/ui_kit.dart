@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Colours taken straight from the Figma file.
 class AppColors {
   static const navy = Color(0xFF13182C);
   static const light = Color(0xFFEFEDF8);
@@ -11,16 +10,11 @@ class AppColors {
   static const red = Color(0xFFFF5757);
   static const blue = Color(0xFF38B6FF);
 
-  // White overlays on navy (joystick base / knob / boost fill) and the
-  // dimmed blue used for the empty part of the boost ring.
   static const overlayOuter = Color(0x40FFFFFF);
   static const overlayInner = Color(0x21FFFFFF);
   static const blueTrack = Color(0x4038B6FF);
 }
 
-/// The Figma frames are 917 x 451. Every size below is written in design
-/// pixels and multiplied by [DesignScale.of], so the UI keeps its proportions
-/// on any landscape phone.
 class DesignScale extends InheritedWidget {
   const DesignScale({super.key, required this.s, required super.child});
 
@@ -33,7 +27,6 @@ class DesignScale extends InheritedWidget {
   bool updateShouldNotify(DesignScale oldWidget) => oldWidget.s != s;
 }
 
-/// Fredoka, as used in the design.
 class AppText {
   static TextStyle title(double s, {Color color = AppColors.navy}) =>
       GoogleFonts.fredoka(
@@ -58,8 +51,6 @@ class AppText {
   );
 }
 
-/// Page chrome shared by both screens: top pill button, centred title and the
-/// navy rounded box that holds the content.
 class ScreenFrame extends StatelessWidget {
   const ScreenFrame({
     super.key,
@@ -116,7 +107,6 @@ class ScreenFrame extends StatelessWidget {
   }
 }
 
-/// The light-lilac SKIP / BACK button in the top-left corner.
 class TopPill extends StatelessWidget {
   const TopPill({
     super.key,
@@ -174,8 +164,6 @@ class TopPill extends StatelessWidget {
 
 enum LucideShape { skipForward, chevronLeft, zap }
 
-/// Small stroke icons (Lucide paths, 24 x 24 grid) drawn with a painter so no
-/// icon package is needed.
 class LucideIcon extends StatelessWidget {
   const LucideIcon(
     this.shape, {
