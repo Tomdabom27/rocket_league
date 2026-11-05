@@ -77,21 +77,29 @@ class CarLink extends ChangeNotifier {
             d['address'] as String: (d['name'] ?? 'UNKNOWN DEVICE'),
       };
 
-      final nearby = await FlutterBluetoothSerial.scanDevices();
+      // If scanning fails, fall back to showing every paired device.
+      var nearbyAddresses = pairedByAddress.keys.toSet();
+      try {
+        final nearby = await FlutterBluetoothSerial.scanDevices();
+        nearbyAddresses = nearby
+            .map((d) => d['address'])
+            .whereType<String>()
+            .toSet();
+      } catch (e) {
+        debugPrint('Bluetooth scan failed: $e');
+      }
 
       _devices =
-          nearby
-              .map((d) => d['address'])
-              .whereType<String>()
+          nearbyAddresses
               .where(pairedByAddress.containsKey)
-              .toSet()
               .map((a) => FoundDevice(name: pairedByAddress[a]!, address: a))
               .toList()
             ..sort((a, b) {
               if (a.isModule != b.isModule) return a.isModule ? -1 : 1;
               return a.name.toLowerCase().compareTo(b.name.toLowerCase());
             });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('loadDevices failed: $e');
       _loadError = 'COULDN’T SCAN FOR DEVICES';
     }
     _loading = false;
