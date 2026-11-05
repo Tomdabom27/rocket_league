@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'car_link.dart';
 import 'play_page.dart';
+import 'settings_page.dart';
 import 'ui_kit.dart';
 
 class ConnectPage extends StatefulWidget {
@@ -75,6 +76,7 @@ class _ConnectPageState extends State<ConnectPage> {
         textLeft: 61,
         onTap: () => _openPlay(skipped: true),
       ),
+      trailing: const SettingsPill(),
       child: ListenableBuilder(
         listenable: link,
         builder: (context, _) => _DeviceBox(link: link, onConnect: _connect),

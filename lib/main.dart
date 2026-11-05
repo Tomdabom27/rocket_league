@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'connect_page.dart';
+import 'settings.dart';
 import 'ui_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FlutterBluetoothSerial.ensurePermissions();
+  await AppSettings.instance.load();
   runApp(const RocketLeagueApp());
 }
 

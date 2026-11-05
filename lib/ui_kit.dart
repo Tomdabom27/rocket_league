@@ -56,11 +56,16 @@ class ScreenFrame extends StatelessWidget {
     super.key,
     required this.title,
     required this.pill,
+    this.trailing,
     required this.child,
   });
 
   final String title;
+
   final Widget pill;
+
+  final Widget? trailing;
+
   final Widget child;
 
   @override
@@ -83,6 +88,11 @@ class ScreenFrame extends StatelessWidget {
                         children: [
                           Align(alignment: Alignment.centerLeft, child: pill),
                           Center(child: Text(title, style: AppText.title(s))),
+                          if (trailing != null)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: trailing,
+                            ),
                         ],
                       ),
                     ),
@@ -116,6 +126,7 @@ class TopPill extends StatelessWidget {
     required this.iconLeft,
     required this.textLeft,
     required this.onTap,
+    this.width = 174,
   });
 
   final String label;
@@ -124,6 +135,8 @@ class TopPill extends StatelessWidget {
   final double iconLeft;
   final double textLeft;
   final VoidCallback onTap;
+
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +148,7 @@ class TopPill extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          width: 174 * s,
+          width: width * s,
           height: 43 * s,
           child: Stack(
             children: [
@@ -162,7 +175,7 @@ class TopPill extends StatelessWidget {
   }
 }
 
-enum LucideShape { skipForward, chevronLeft, zap }
+enum LucideShape { skipForward, chevronLeft, zap, settings }
 
 class LucideIcon extends StatelessWidget {
   const LucideIcon(
@@ -183,6 +196,39 @@ class LucideIcon extends StatelessWidget {
     size: Size.square(size),
     painter: _LucidePainter(shape, color, strokeWidth),
   );
+}
+
+Path _gearPath() {
+  const teeth = 8;
+  const outer = 10.0;
+  const inner = 7.6;
+  const step = 2 * math.pi / teeth;
+
+  final path = Path();
+  var first = true;
+
+  void point(double angle, double radius) {
+    final o = Offset(
+      12 + radius * math.cos(angle),
+      12 + radius * math.sin(angle),
+    );
+    if (first) {
+      path.moveTo(o.dx, o.dy);
+      first = false;
+    } else {
+      path.lineTo(o.dx, o.dy);
+    }
+  }
+
+  for (var i = 0; i < teeth; i++) {
+    final c = i * step - math.pi / 2;
+    point(c - step * 0.30, inner);
+    point(c - step * 0.17, outer);
+    point(c + step * 0.17, outer);
+    point(c + step * 0.30, inner);
+  }
+  path.close();
+  return path;
 }
 
 class _LucidePainter extends CustomPainter {
@@ -233,6 +279,9 @@ class _LucidePainter extends CustomPainter {
             ..close(),
           paint,
         );
+      case LucideShape.settings:
+        canvas.drawPath(_gearPath(), paint);
+        canvas.drawCircle(const Offset(12, 12), 3, paint);
     }
   }
 
